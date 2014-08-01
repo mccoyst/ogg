@@ -27,6 +27,7 @@ type Page struct {
 var ErrBadSegs = errors.New("invalid segment table size")
 
 func (d *Decoder) Decode() (Page, error) {
+	//BUG(mccoyst): should scan to next OggS
 	//BUG(mccoyst): validate checksum
 	var h pageHeader
 	err := binary.Read(d.r, ByteOrder, &h)
