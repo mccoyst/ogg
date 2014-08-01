@@ -19,15 +19,15 @@ const MIMEType = "application/ogg"
 
 var ByteOrder = binary.LittleEndian
 
-type PageHeader struct {
-	oggS          [4]byte // 0-3, always == "OggS"
-	streamVersion byte    // 4, always == 0
-	headerType    byte    // 5
+type pageHeader struct {
+	OggS          [4]byte // 0-3, always == "OggS"
+	StreamVersion byte    // 4, always == 0
+	HeaderType    byte    // 5
 	Granule       int64   // 6-13, codec-specific
-	serial        uint32  // 14-17, associated with a logical stream
-	page          uint32  // 18-21, sequence number of page in packet
-	crc           uint32  // 22-25
-	nsegs         byte    // 26
+	Serial        uint32  // 14-17, associated with a logical stream
+	Page          uint32  // 18-21, sequence number of page in packet
+	Crc           uint32  // 22-25
+	Nsegs         byte    // 26
 }
 
 const (
@@ -41,39 +41,35 @@ const (
 
 var crcTable = crc32.MakeTable(0x04c11db7)
 
-type PageReader interface {
-	Read() ([]byte, error)
-}
-
-type Writer struct {
+type Encoder struct {
 	serial uint32
 	w      io.Writer
-	//TODO(mccoyst): add a function for determining granule
 }
 
-func NewWriter(id uint32, w io.Writer) *Writer {
-	return &Writer{id, w}
+func NewEncoder(id uint32, w io.Writer) *Encoder {
+	return &Encoder{id, w}
 }
 
-func (w *Writer) WriteBOS(packet []byte) error {
-	_, err := w.writePacket(bos, packet)
+func (w *Encoder) WriteBOS(granule int64, packet []byte) error {
+	_, err := w.writePacket(bos, granule, packet)
 	return err
 }
 
-func (w *Writer) Write(packet []byte) (int, error) {
-	return w.writePacket(0, packet)
+func (w *Encoder) Write(granule int64, packet []byte) (int, error) {
+	return w.writePacket(0, granule, packet)
 }
 
-func (w *Writer) WriteEOS() error {
-	_, err := w.writePacket(eos, nil)
+func (w *Encoder) WriteEOS() error {
+	_, err := w.writePacket(eos, 0, nil)
 	return err
 }
 
-func (w *Writer) writePacket(kind byte, packet []byte) (int, error) {
-	h := PageHeader{
-		oggS:       [4]byte{'O', 'g', 'g', 'S'},
-		headerType: kind,
-		serial:     w.serial,
+func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, error) {
+	h := pageHeader{
+		OggS:       [4]byte{'O', 'g', 'g', 'S'},
+		HeaderType: kind,
+		Serial:     w.serial,
+		Granule: granule,
 	}
 
 	var err error
@@ -93,9 +89,9 @@ func (w *Writer) writePacket(kind byte, packet []byte) (int, error) {
 	s = e
 
 	last := (len(packet) / mps) * mps
-	h.headerType &= cop
+	h.HeaderType &= cop
 	for s < last {
-		h.page++
+		h.Page++
 		e = s + mps
 		page = packet[s:e]
 		m, err = w.writePage(page, &h)
@@ -113,9 +109,9 @@ func (w *Writer) writePacket(kind byte, packet []byte) (int, error) {
 	return n, err
 }
 
-func (w *Writer) writePage(page []byte, h *PageHeader) (int, error) {
-	h.nsegs = byte(len(page)/255 + 1)
-	segtbl := make([]byte, h.nsegs)
+func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
+	h.Nsegs = byte(len(page)/255 + 1)
+	segtbl := make([]byte, h.Nsegs)
 	for i := 0; i < len(segtbl)-1; i++ {
 		segtbl[i] = 255
 	}
