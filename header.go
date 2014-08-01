@@ -15,6 +15,11 @@ import (
 
 const MIMEType = "application/ogg"
 
+const mps = 255 * 255
+// header + max segment table of 255 + max 255 segments of 255 bytes in a packet
+// == 65307, per the RFC
+const maxPageSize = 27 + 255 + mps
+
 var ByteOrder = binary.LittleEndian
 
 type pageHeader struct {

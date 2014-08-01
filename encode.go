@@ -12,10 +12,11 @@ import (
 type Encoder struct {
 	serial uint32
 	w      io.Writer
+	buf [maxPageSize]byte
 }
 
 func NewEncoder(id uint32, w io.Writer) *Encoder {
-	return &Encoder{id, w}
+	return &Encoder{serial: id, w: w}
 }
 
 func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
@@ -42,7 +43,6 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 
 	var err error
 	n, m := 0, 0
-	const mps = 255 * 255 // maximum 255 segments of 255 bytes in a page
 
 	s := 0
 	e := s + mps
@@ -85,8 +85,8 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
 	}
 	segtbl[len(segtbl)-1] = byte(len(page) % 255)
 
-	var hb bytes.Buffer
-	err := binary.Write(&hb, ByteOrder, h)
+	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
+	err := binary.Write(hb, ByteOrder, h)
 	if err != nil {
 		return 0, err
 	}
