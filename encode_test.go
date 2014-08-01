@@ -20,7 +20,7 @@ func TestBasicEncode(t *testing.T) {
 	expect := []byte{
 		'O', 'g', 'g', 'S',
 		0,
-		bos,
+		BOS,
 		2, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		0, 0, 0, 0,

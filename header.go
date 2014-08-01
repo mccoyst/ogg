@@ -35,11 +35,11 @@ type pageHeader struct {
 
 const (
 	// Continuation of packet
-	cop byte = 1 + iota
+	COP byte = 1 + iota
 	// Beginning of stream
-	bos = 1 << iota
+	BOS = 1 << iota
 	// End of stream
-	eos = 1 << iota
+	EOS = 1 << iota
 )
 
 var crcTable = crc32.MakeTable(0x04c11db7)

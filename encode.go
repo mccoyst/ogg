@@ -20,7 +20,7 @@ func NewEncoder(id uint32, w io.Writer) *Encoder {
 }
 
 func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
-	_, err := w.writePacket(bos, granule, packet)
+	_, err := w.writePacket(BOS, granule, packet)
 	return err
 }
 
@@ -29,7 +29,7 @@ func (w *Encoder) Encode(granule int64, packet []byte) (int, error) {
 }
 
 func (w *Encoder) EncodeEOS() error {
-	_, err := w.writePacket(eos, 0, nil)
+	_, err := w.writePacket(EOS, 0, nil)
 	return err
 }
 
@@ -57,7 +57,7 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 	s = e
 
 	last := (len(packet) / mps) * mps
-	h.HeaderType &= cop
+	h.HeaderType &= COP
 	for s < last {
 		h.Page++
 		e = s + mps
