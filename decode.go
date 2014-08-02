@@ -71,20 +71,21 @@ func (d *Decoder) Decode() (Page, error) {
 		return Page{}, ErrBadSegs
 	}
 
-	segtbl := d.buf[headsz:headsz+h.Nsegs]
+	nsegs := int(h.Nsegs)
+	segtbl := d.buf[headsz:headsz+nsegs]
 	_, err = io.ReadFull(d.r, segtbl)
 	if err != nil {
 		return Page{}, err
 	}
 
-	packetlen := int(mss*(h.Nsegs-1) + segtbl[h.Nsegs-1])
-	packet := d.buf[headsz+h.Nsegs:headsz+int(h.Nsegs)+packetlen]
+	packetlen := mss*(nsegs-1) + int(segtbl[nsegs-1])
+	packet := d.buf[headsz+nsegs:headsz+nsegs+packetlen]
 	_, err = io.ReadFull(d.r, packet)
 	if err != nil {
 		return Page{}, err
 	}
 
-	page := d.buf[0:headsz+int(h.Nsegs)+packetlen]
+	page := d.buf[0:headsz+nsegs+packetlen]
 	// Clear out existing crc before calculating it
 	page[22] = 0
 	page[23] = 0
