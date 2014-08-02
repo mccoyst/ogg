@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"io"
 )
 
@@ -26,41 +27,41 @@ type Page struct {
 }
 
 var ErrBadSegs = errors.New("invalid segment table size")
+var ErrBadCrc = errors.New("invalid crc in packet")
 
 var oggs = []byte{ 'O', 'g', 'g', 'S' }
 
 func (d *Decoder) Decode() (Page, error) {
-	buf := d.buf[0:headsz]
+	hbuf := d.buf[0:headsz]
 	b := 0
 	for {
-		_, err := io.ReadFull(d.r, buf[b:])
+		_, err := io.ReadFull(d.r, hbuf[b:])
 		if err != nil {
 			return Page{}, err
 		}
 
-		i := bytes.Index(buf, oggs)
+		i := bytes.Index(hbuf, oggs)
 		if i == 0 {
 			break
 		}
 
 		if i < 0 {
-			if buf[headsz-1] == 'O' {
+			if hbuf[headsz-1] == 'O' {
 				i = headsz-1
-			} else if  buf[headsz-2] == 'O' && buf[headsz-1] == 'g' {
+			} else if  hbuf[headsz-2] == 'O' && hbuf[headsz-1] == 'g' {
 				i = headsz-2
-			} else if buf[headsz-3] == 'O' && buf[headsz-2] == 'g' && buf[headsz-1] == 'g' {
+			} else if hbuf[headsz-3] == 'O' && hbuf[headsz-2] == 'g' && hbuf[headsz-1] == 'g' {
 				i = headsz-3
 			}
 		}
 
 		if i > 0 {
-			b = copy(buf, buf[i:])
+			b = copy(hbuf, hbuf[i:])
 		}
 	}
 
-	//BUG(mccoyst): validate checksum
 	var h pageHeader
-	err := binary.Read(bytes.NewBuffer(buf), ByteOrder, &h)
+	err := binary.Read(bytes.NewBuffer(hbuf), ByteOrder, &h)
 	if err != nil {
 		return Page{}, err
 	}
@@ -69,16 +70,28 @@ func (d *Decoder) Decode() (Page, error) {
 		return Page{}, ErrBadSegs
 	}
 
-	_, err = io.ReadFull(d.r, d.buf[0:h.Nsegs])
+	segtbl := d.buf[headsz:headsz+h.Nsegs]
+	_, err = io.ReadFull(d.r, segtbl)
 	if err != nil {
 		return Page{}, err
 	}
 
-	packetlen := int(255*(h.Nsegs-1) + d.buf[h.Nsegs-1])
-	packet := d.buf[0:packetlen]
+	packetlen := int(mss*(h.Nsegs-1) + segtbl[h.Nsegs-1])
+	packet := d.buf[headsz+h.Nsegs:headsz+int(h.Nsegs)+packetlen]
 	_, err = io.ReadFull(d.r, packet)
 	if err != nil {
 		return Page{}, err
+	}
+
+	page := d.buf[0:headsz+int(h.Nsegs)+packetlen]
+	// Clear out existing crc before calculating it
+	page[22] = 0
+	page[23] = 0
+	page[24] = 0
+	page[25] = 0
+	crc := crc32.Checksum(page, crcTable)
+	if crc != h.Crc {
+		return Page{}, ErrBadCrc
 	}
 
 	return Page{h.HeaderType, h.Serial, h.Granule, packet}, nil
