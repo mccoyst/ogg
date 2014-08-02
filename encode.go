@@ -12,7 +12,7 @@ import (
 type Encoder struct {
 	serial uint32
 	w      io.Writer
-	buf [maxPageSize]byte
+	buf    [maxPageSize]byte
 }
 
 func NewEncoder(id uint32, w io.Writer) *Encoder {
@@ -38,7 +38,7 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 		OggS:       [4]byte{'O', 'g', 'g', 'S'},
 		HeaderType: kind,
 		Serial:     w.serial,
-		Granule: granule,
+		Granule:    granule,
 	}
 
 	var err error

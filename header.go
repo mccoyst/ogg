@@ -16,10 +16,13 @@ import (
 const MIMEType = "application/ogg"
 
 const headsz = 27
+
 // max segment size
 const mss = 255
+
 // max packet size
 const mps = mss * 255
+
 // == 65307, per the RFC
 const maxPageSize = headsz + mss + mps
 

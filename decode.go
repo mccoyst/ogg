@@ -11,7 +11,7 @@ import (
 )
 
 type Decoder struct {
-	r io.Reader
+	r   io.Reader
 	buf [maxPageSize]byte
 }
 
@@ -20,16 +20,16 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 type Page struct {
-	Type byte
-	Serial uint32
+	Type    byte
+	Serial  uint32
 	Granule int64
-	Packet []byte
+	Packet  []byte
 }
 
 var ErrBadSegs = errors.New("invalid segment table size")
 var ErrBadCrc = errors.New("invalid crc in packet")
 
-var oggs = []byte{ 'O', 'g', 'g', 'S' }
+var oggs = []byte{'O', 'g', 'g', 'S'}
 
 func (d *Decoder) Decode() (Page, error) {
 	hbuf := d.buf[0:headsz]
@@ -48,11 +48,11 @@ func (d *Decoder) Decode() (Page, error) {
 		if i < 0 {
 			const n = headsz
 			if hbuf[n-1] == 'O' {
-				i = n-1
-			} else if  hbuf[n-2] == 'O' && hbuf[n-1] == 'g' {
-				i = n-2
+				i = n - 1
+			} else if hbuf[n-2] == 'O' && hbuf[n-1] == 'g' {
+				i = n - 2
 			} else if hbuf[n-3] == 'O' && hbuf[n-2] == 'g' && hbuf[n-1] == 'g' {
-				i = n-3
+				i = n - 3
 			}
 		}
 
@@ -72,20 +72,20 @@ func (d *Decoder) Decode() (Page, error) {
 	}
 
 	nsegs := int(h.Nsegs)
-	segtbl := d.buf[headsz:headsz+nsegs]
+	segtbl := d.buf[headsz : headsz+nsegs]
 	_, err = io.ReadFull(d.r, segtbl)
 	if err != nil {
 		return Page{}, err
 	}
 
 	packetlen := mss*(nsegs-1) + int(segtbl[nsegs-1])
-	packet := d.buf[headsz+nsegs:headsz+nsegs+packetlen]
+	packet := d.buf[headsz+nsegs : headsz+nsegs+packetlen]
 	_, err = io.ReadFull(d.r, packet)
 	if err != nil {
 		return Page{}, err
 	}
 
-	page := d.buf[0:headsz+nsegs+packetlen]
+	page := d.buf[0 : headsz+nsegs+packetlen]
 	// Clear out existing crc before calculating it
 	page[22] = 0
 	page[23] = 0
