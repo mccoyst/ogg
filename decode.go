@@ -46,12 +46,13 @@ func (d *Decoder) Decode() (Page, error) {
 		}
 
 		if i < 0 {
-			if hbuf[headsz-1] == 'O' {
-				i = headsz-1
-			} else if  hbuf[headsz-2] == 'O' && hbuf[headsz-1] == 'g' {
-				i = headsz-2
-			} else if hbuf[headsz-3] == 'O' && hbuf[headsz-2] == 'g' && hbuf[headsz-1] == 'g' {
-				i = headsz-3
+			const n = headsz
+			if hbuf[n-1] == 'O' {
+				i = n-1
+			} else if  hbuf[n-2] == 'O' && hbuf[n-1] == 'g' {
+				i = n-2
+			} else if hbuf[n-3] == 'O' && hbuf[n-2] == 'g' && hbuf[n-1] == 'g' {
+				i = n-3
 			}
 		}
 
