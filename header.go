@@ -15,10 +15,13 @@ import (
 
 const MIMEType = "application/ogg"
 
-const mps = 255 * 255
-// header + max segment table of 255 + max 255 segments of 255 bytes in a packet
+const headsz = 27
+// max segment size
+const mss = 255
+// max packet size
+const mps = mss * 255
 // == 65307, per the RFC
-const maxPageSize = 27 + 255 + mps
+const maxPageSize = headsz + mss + mps
 
 var ByteOrder = binary.LittleEndian
 

@@ -30,7 +30,7 @@ var ErrBadSegs = errors.New("invalid segment table size")
 var oggs = []byte{ 'O', 'g', 'g', 'S' }
 
 func (d *Decoder) Decode() (Page, error) {
-	buf := d.buf[0:27]
+	buf := d.buf[0:headsz]
 	b := 0
 	for {
 		_, err := io.ReadFull(d.r, buf[b:])
@@ -44,12 +44,12 @@ func (d *Decoder) Decode() (Page, error) {
 		}
 
 		if i < 0 {
-			if buf[26] == 'O' {
-				i = 26
-			} else if  buf[25] == 'O' && buf[26] == 'g' {
-				i = 25
-			} else if buf[24] == 'O' && buf[25] == 'g' && buf[26] == 'g' {
-				i = 24
+			if buf[headsz-1] == 'O' {
+				i = headsz-1
+			} else if  buf[headsz-2] == 'O' && buf[headsz-1] == 'g' {
+				i = headsz-2
+			} else if buf[headsz-3] == 'O' && buf[headsz-2] == 'g' && buf[headsz-1] == 'g' {
+				i = headsz-3
 			}
 		}
 
