@@ -3,6 +3,7 @@
 package ogg
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -26,11 +27,40 @@ type Page struct {
 
 var ErrBadSegs = errors.New("invalid segment table size")
 
+var oggs = []byte{ 'O', 'g', 'g', 'S' }
+
 func (d *Decoder) Decode() (Page, error) {
-	//BUG(mccoyst): should scan to next OggS
+	buf := d.buf[0:27]
+	b := 0
+	for {
+		_, err := io.ReadFull(d.r, buf[b:])
+		if err != nil {
+			return Page{}, err
+		}
+
+		i := bytes.Index(buf, oggs)
+		if i == 0 {
+			break
+		}
+
+		if i < 0 {
+			if buf[26] == 'O' {
+				i = 26
+			} else if  buf[25] == 'O' && buf[26] == 'g' {
+				i = 25
+			} else if buf[24] == 'O' && buf[25] == 'g' && buf[26] == 'g' {
+				i = 24
+			}
+		}
+
+		if i > 0 {
+			b = copy(buf, buf[i:])
+		}
+	}
+
 	//BUG(mccoyst): validate checksum
 	var h pageHeader
-	err := binary.Read(d.r, ByteOrder, &h)
+	err := binary.Read(bytes.NewBuffer(buf), ByteOrder, &h)
 	if err != nil {
 		return Page{}, err
 	}
