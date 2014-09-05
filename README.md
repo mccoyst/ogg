@@ -1,4 +1,6 @@
-Under Construction
------
+Package ogg implements encoding and decoding of OGG streams as defined in
+http://xiph.org/ogg/doc/rfc3533.txt
+and
+http://xiph.org/ogg/doc/framing.html .
 
-I'm still not even sure I like the API yet.
+[![GoDoc](https://godoc.org/github.com/mccoyst/ogg?status.svg)](https://godoc.org/github.com/mccoyst/ogg)
