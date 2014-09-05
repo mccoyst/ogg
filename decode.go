@@ -42,6 +42,8 @@ var ErrBadCrc = errors.New("invalid crc in packet")
 var oggs = []byte{'O', 'g', 'g', 'S'}
 
 // Decode reads from d's Reader to the next ogg page, then returns the decoded Page or an error.
+// The error may be io.EOF if that's what the Reader returned.
+//
 // It is safe to call Decode concurrently on distinct Decoders if their Readers are distinct.
 // Otherwise, the behavior is undefined.
 func (d *Decoder) Decode() (Page, error) {
