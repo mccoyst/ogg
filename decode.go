@@ -75,7 +75,7 @@ func (d *Decoder) Decode() (Page, error) {
 	}
 
 	var h pageHeader
-	err := binary.Read(bytes.NewBuffer(hbuf), ByteOrder, &h)
+	err := binary.Read(bytes.NewBuffer(hbuf), byteOrder, &h)
 	if err != nil {
 		return Page{}, err
 	}

@@ -111,7 +111,7 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
 	segtbl[len(segtbl)-1] = byte(len(page) % 255)
 
 	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
-	err := binary.Write(hb, ByteOrder, h)
+	err := binary.Write(hb, byteOrder, h)
 	if err != nil {
 		return 0, err
 	}
@@ -121,7 +121,7 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
 
 	bb := hb.Bytes()
 	crc := crc32.Checksum(bb, crcTable)
-	err = binary.Write(bytes.NewBuffer(bb[22:22:26]), ByteOrder, crc)
+	err = binary.Write(bytes.NewBuffer(bb[22:22:26]), byteOrder, crc)
 	if err != nil {
 		return 0, nil
 	}

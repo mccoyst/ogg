@@ -28,7 +28,7 @@ const mps = mss * 255
 const maxPageSize = headsz + mss + mps
 
 // The byte order of integers in ogg page headers.
-var ByteOrder = binary.LittleEndian
+var byteOrder = binary.LittleEndian
 
 type pageHeader struct {
 	OggS          [4]byte // 0-3, always == "OggS"
