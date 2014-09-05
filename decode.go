@@ -44,6 +44,9 @@ var oggs = []byte{'O', 'g', 'g', 'S'}
 // Decode reads from d's Reader to the next ogg page, then returns the decoded Page or an error.
 // The error may be io.EOF if that's what the Reader returned.
 //
+// The buffer underlying the returned Page's Packet is owned by the Decoder.
+// It may be overwritten by subsequent calls to Decode.
+//
 // It is safe to call Decode concurrently on distinct Decoders if their Readers are distinct.
 // Otherwise, the behavior is undefined.
 func (d *Decoder) Decode() (Page, error) {
