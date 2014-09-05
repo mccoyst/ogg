@@ -25,7 +25,7 @@ func NewDecoder(r io.Reader) *Decoder {
 type Page struct {
 	// Type is a bitmask of COP, BOS, and/or EOS.
 	Type    byte
-	// Serial is the bistream serial number.
+	// Serial is the bitstream serial number.
 	Serial  uint32
 	// Granule is the granule position, whose meaning is dependent on the encapsulated codec.
 	Granule int64
