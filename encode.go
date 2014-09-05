@@ -49,7 +49,7 @@ func (w *Encoder) Encode(granule int64, packet []byte) (int, error) {
 	return w.writePacket(0, granule, packet)
 }
 
-// EncodeBOS writes an end-of-stream packet to the ogg stream,
+// EncodeEOS writes an end-of-stream packet to the ogg stream,
 // using the provided granule position.
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
