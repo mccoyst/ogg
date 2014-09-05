@@ -9,25 +9,50 @@ import (
 	"io"
 )
 
+// An Encoder encodes raw bytes into an ogg stream.
 type Encoder struct {
 	serial uint32
 	w      io.Writer
 	buf    [maxPageSize]byte
 }
 
+// NewEncoder creates an ogg encoder with the given serial ID.
+// Multiple Encoders can be used to encode multiplexed logical streams
+// by giving them distinct IDs. Users must be sure to encode the streams
+// as specified by the ogg RFC:
+// When Grouping, all BOS pages must come before the data
+// and EOS pages, with the order of BOS pages defined by the encapsulated encoding.
+// When Chaining, the EOS page of the first stream must be immediately followed by
+// the BOS of the second stream, and so on.
+//
+// For more details, see
+// http://xiph.org/ogg/doc/rfc3533.txt and
+// http://xiph.org/ogg/doc/framing.html
 func NewEncoder(id uint32, w io.Writer) *Encoder {
 	return &Encoder{serial: id, w: w}
 }
 
+// EncodeBOS writes a beginning-of-stream packet to the ogg stream,
+// using the provided granule position.
+// If the packet is larger than can fit in a page, it is split into multiple
+// pages with the continuation-of-packet flag set.
 func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
 	_, err := w.writePacket(BOS, granule, packet)
 	return err
 }
 
+// Encode writes a data packet to the ogg stream,
+// using the provided granule position.
+// If the packet is larger than can fit in a page, it is split into multiple
+// pages with the continuation-of-packet flag set.
 func (w *Encoder) Encode(granule int64, packet []byte) (int, error) {
 	return w.writePacket(0, granule, packet)
 }
 
+// EncodeBOS writes an end-of-stream packet to the ogg stream,
+// using the provided granule position.
+// If the packet is larger than can fit in a page, it is split into multiple
+// pages with the continuation-of-packet flag set.
 func (w *Encoder) EncodeEOS() error {
 	_, err := w.writePacket(EOS, 0, nil)
 	return err

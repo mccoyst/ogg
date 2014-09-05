@@ -13,6 +13,7 @@ import (
 	"hash/crc32"
 )
 
+// The MIME type as defined in RFC 3534.
 const MIMEType = "application/ogg"
 
 const headsz = 27
@@ -26,6 +27,7 @@ const mps = mss * 255
 // == 65307, per the RFC
 const maxPageSize = headsz + mss + mps
 
+// The byte order of integers in ogg page headers.
 var ByteOrder = binary.LittleEndian
 
 type pageHeader struct {
