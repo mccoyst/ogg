@@ -4,3 +4,5 @@ and
 http://xiph.org/ogg/doc/framing.html .
 
 [![GoDoc](https://godoc.org/github.com/mccoyst/ogg?status.svg)](https://godoc.org/github.com/mccoyst/ogg)
+
+[![Build Status](https://travis-ci.org/mccoyst/ogg.svg?branch=master)](https://travis-ci.org/mccoyst/ogg)
