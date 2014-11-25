@@ -36,9 +36,8 @@ func NewEncoder(id uint32, w io.Writer) *Encoder {
 // using the provided granule position.
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
-func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
-	_, err := w.writePacket(BOS, granule, packet)
-	return err
+func (w *Encoder) EncodeBOS(granule int64, packet []byte) (int, error) {
+	return w.writePacket(BOS, granule, packet)
 }
 
 // Encode writes a data packet to the ogg stream,
