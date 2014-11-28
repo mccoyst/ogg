@@ -37,15 +37,14 @@ func NewEncoder(id uint32, w io.Writer) *Encoder {
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
 func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
-	_, err := w.writePacket(BOS, granule, packet)
-	return err
+	return w.writePacket(BOS, granule, packet)
 }
 
 // Encode writes a data packet to the ogg stream,
 // using the provided granule position.
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
-func (w *Encoder) Encode(granule int64, packet []byte) (int, error) {
+func (w *Encoder) Encode(granule int64, packet []byte) error {
 	return w.writePacket(0, granule, packet)
 }
 
@@ -54,11 +53,10 @@ func (w *Encoder) Encode(granule int64, packet []byte) (int, error) {
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
 func (w *Encoder) EncodeEOS() error {
-	_, err := w.writePacket(EOS, 0, nil)
-	return err
+	return w.writePacket(EOS, 0, nil)
 }
 
-func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, error) {
+func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 	h := pageHeader{
 		OggS:       [4]byte{'O', 'g', 'g', 'S'},
 		HeaderType: kind,
@@ -67,7 +65,6 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 	}
 
 	var err error
-	n, m := 0, 0
 
 	s := 0
 	e := s + mps
@@ -75,9 +72,9 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 		e = len(packet)
 	}
 	page := packet[s:e]
-	n, err = w.writePage(page, &h)
+	err = w.writePage(page, &h)
 	if err != nil {
-		return n, err
+		return err
 	}
 	s = e
 
@@ -87,22 +84,20 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) (int, err
 		h.Page++
 		e = s + mps
 		page = packet[s:e]
-		m, err = w.writePage(page, &h)
-		n += m
+		err = w.writePage(page, &h)
 		if err != nil {
-			return n, err
+			return err
 		}
 		s = e
 	}
 
 	if s != len(packet) {
-		m, err = w.writePage(packet[s:], &h)
-		n += m
+		err = w.writePage(packet[s:], &h)
 	}
-	return n, err
+	return err
 }
 
-func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
+func (w *Encoder) writePage(page []byte, h *pageHeader) error {
 	h.Nsegs = byte(len(page)/255 + 1)
 	segtbl := make([]byte, h.Nsegs)
 	for i := 0; i < len(segtbl)-1; i++ {
@@ -113,7 +108,7 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
 	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
 	err := binary.Write(hb, byteOrder, h)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	hb.Write(segtbl)
@@ -123,9 +118,9 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) (int, error) {
 	crc := crc32.Checksum(bb, crcTable)
 	err = binary.Write(bytes.NewBuffer(bb[22:22:26]), byteOrder, crc)
 	if err != nil {
-		return 0, nil
+		return err
 	}
 
-	n64, err := hb.WriteTo(w.w)
-	return int(n64), err
+	_, err = hb.WriteTo(w.w)
+	return err
 }
