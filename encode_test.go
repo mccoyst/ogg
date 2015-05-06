@@ -24,7 +24,7 @@ func TestBasicEncodeBOS(t *testing.T) {
 		2, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		0, 0, 0, 0,
-		0x4e, 0x8e, 0x96, 0xf9, // crc
+		0x7e, 0xdf, 0x2e, 0x1e, // crc
 		1,
 		5, // segment table
 		'h', 'e', 'l', 'l', 'o',
@@ -52,7 +52,7 @@ func TestBasicEncode(t *testing.T) {
 		2, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		0, 0, 0, 0,
-		0xee, 0x3e, 0x6c, 0xfc, // crc
+		0xc8, 0x21, 0xcc, 0x1c, // crc
 		1,
 		5, // segment table
 		'h', 'e', 'l', 'l', 'o',

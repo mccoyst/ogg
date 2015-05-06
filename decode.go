@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"hash/crc32"
 	"io"
 	"strconv"
 )
@@ -126,7 +125,7 @@ func (d *Decoder) Decode() (Page, error) {
 	page[23] = 0
 	page[24] = 0
 	page[25] = 0
-	crc := crc32.Checksum(page, crcTable)
+	crc := crc32(page)
 	if crc != h.Crc {
 		return Page{}, ErrBadCrc{h.Crc, crc}
 	}

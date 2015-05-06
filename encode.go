@@ -5,7 +5,6 @@ package ogg
 import (
 	"bytes"
 	"encoding/binary"
-	"hash/crc32"
 	"io"
 )
 
@@ -115,7 +114,7 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) error {
 	hb.Write(page)
 
 	bb := hb.Bytes()
-	crc := crc32.Checksum(bb, crcTable)
+	crc := crc32(bb)
 	err = binary.Write(bytes.NewBuffer(bb[22:22:26]), byteOrder, crc)
 	if err != nil {
 		return err
