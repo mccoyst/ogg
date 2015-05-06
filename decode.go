@@ -106,7 +106,14 @@ func (d *Decoder) Decode() (Page, error) {
 		return Page{}, err
 	}
 
-	packetlen := mss*(nsegs-1) + int(segtbl[nsegs-1])
+	packetlen := 0
+	// This seems to contradict the spec, which says a segment with length < 255
+	// indicates the end of a packet. But hey, libogg puts out short non-final segments,
+	// so what can I do.
+	for _, l := range segtbl {
+		packetlen += int(l)
+	}
+
 	packet := d.buf[headsz+nsegs : headsz+nsegs+packetlen]
 	_, err = io.ReadFull(d.r, packet)
 	if err != nil {
