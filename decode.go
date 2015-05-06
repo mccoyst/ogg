@@ -46,7 +46,7 @@ type ErrBadCrc struct {
 
 func (bc ErrBadCrc) Error() string {
 	return "invalid crc in packet: got " + strconv.FormatInt(int64(bc.Found), 16) +
-		", expected " + strconv.FormatInt(int64(bc.Found), 16)
+		", expected " + strconv.FormatInt(int64(bc.Expected), 16)
 }
 
 var oggs = []byte{'O', 'g', 'g', 'S'}
