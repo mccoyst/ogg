@@ -102,21 +102,15 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) error {
 	segtbl[len(segtbl)-1] = byte(len(page) % 255)
 
 	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
-	err := binary.Write(hb, byteOrder, h)
-	if err != nil {
-		return err
-	}
+	_ = binary.Write(hb, byteOrder, h)
 
 	hb.Write(segtbl)
 	hb.Write(page)
 
 	bb := hb.Bytes()
 	crc := crc32(bb)
-	err = binary.Write(bytes.NewBuffer(bb[22:22:26]), byteOrder, crc)
-	if err != nil {
-		return err
-	}
+	_ = binary.Write(bytes.NewBuffer(bb[22:22:26]), byteOrder, crc)
 
-	_, err = hb.WriteTo(w.w)
+	_, err := hb.WriteTo(w.w)
 	return err
 }
