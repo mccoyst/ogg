@@ -52,7 +52,7 @@ func TestBadCrc(t *testing.T) {
 
 	err := e.EncodeBOS(2, []byte("hello"))
 	if err != nil {
-		t.Fatalf("unexpected EncodeBOS error:", err)
+		t.Fatal("unexpected EncodeBOS error:", err)
 	}
 
 	b.Bytes()[22] = 0
@@ -64,7 +64,7 @@ func TestBadCrc(t *testing.T) {
 		t.Fatal("unexpected lack of Decode error")
 	}
 	if bs, ok := err.(ErrBadCrc); !ok {
-		t.Fatalf("exected ErrBadCrc, got: %v", err)
+		t.Fatal("exected ErrBadCrc, got:", err)
 	} else if !strings.HasPrefix(bs.Error(), "invalid crc in packet") {
 		t.Fatalf("the error message looks wrong: %q", err.Error())
 	}
@@ -75,30 +75,30 @@ func TestShortDecode(t *testing.T) {
 	d := NewDecoder(&b)
 	_, err := d.Decode()
 	if err != io.EOF {
-		t.Fatalf("expected EOF, got: %v", err)
+		t.Fatal("expected EOF, got:", err)
 	}
 
 	e := NewEncoder(1, &b)
 	err = e.Encode(2, []byte("hello"))
 	if err != nil {
-		t.Fatalf("unexpected Encode error:", err)
+		t.Fatal("unexpected Encode error:", err)
 	}
 	d = NewDecoder(&io.LimitedReader{R: &b, N: headsz})
 	_, err = d.Decode()
 	if err != io.EOF {
-		t.Fatalf("expected EOF, got: %v", err)
+		t.Fatal("expected EOF, got:", err)
 	}
 
 	b.Reset()
 	e = NewEncoder(1, &b)
 	err = e.Encode(2, []byte("hello"))
 	if err != nil {
-		t.Fatalf("unexpected Encode error:", err)
+		t.Fatal("unexpected Encode error:", err)
 	}
 	d = NewDecoder(&io.LimitedReader{R: &b, N: int64(b.Len())-1})
 	_, err = d.Decode()
 	if err != io.ErrUnexpectedEOF {
-		t.Fatalf("expected ErrUnexpectedEOF, got: %v", err)
+		t.Fatal("expected ErrUnexpectedEOF, got:", err)
 	}
 }
 
@@ -108,7 +108,7 @@ func TestBadSegs(t *testing.T) {
 
 	err := e.EncodeBOS(2, []byte("hello"))
 	if err != nil {
-		t.Fatalf("unexpected EncodeBOS error:", err)
+		t.Fatal("unexpected EncodeBOS error:", err)
 	}
 
 	b.Bytes()[26] = 0
@@ -116,7 +116,7 @@ func TestBadSegs(t *testing.T) {
 	d := NewDecoder(&b)
 	_, err = d.Decode()
 	if err != ErrBadSegs {
-		t.Fatalf("expected ErrBadSegs, got: %v", err)
+		t.Fatal("expected ErrBadSegs, got:", err)
 	}
 }
 
