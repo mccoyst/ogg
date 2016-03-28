@@ -62,3 +62,30 @@ func TestBasicEncode(t *testing.T) {
 		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
 	}
 }
+
+func TestBasicEncodeEOS(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeEOS()
+	if err != nil {
+		t.Fatal("unexpected EncodeBOS error:", err)
+	}
+
+	bb := b.Bytes()
+	expect := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		EOS,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		0, 0, 0, 0,
+		0xc9, 0x22, 0xe8, 0x34, // crc
+		1,
+		0, // segment table
+	}
+
+	if !bytes.Equal(bb, expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
+	}
+}
