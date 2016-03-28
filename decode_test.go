@@ -4,6 +4,7 @@ package ogg
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -41,6 +42,30 @@ func TestBasicDecode(t *testing.T) {
 
 	if !bytes.Equal(p.Packet, expect) {
 		t.Fatalf("bytes != expected:\n%x\n%x", p.Packet, expect)
+	}
+}
+
+func TestBadDecode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeBOS(2, []byte("hello"))
+	if err != nil {
+		t.Fatalf("unexpected EncodeBOS error:", err)
+	}
+
+	b.Bytes()[22] = 0
+
+	d := NewDecoder(&b)
+
+	_, err = d.Decode()
+	if err == nil {
+		t.Fatal("unexpected lack of Decode error")
+	}
+	if bs, ok := err.(ErrBadCrc); !ok {
+		t.Fatalf("exected ErrBadCrc, got: %v", err)
+	} else if !strings.HasPrefix(bs.Error(), "invalid crc in packet") {
+		t.Fatalf("the error message looks wrong: %q", err.Error())
 	}
 }
 
