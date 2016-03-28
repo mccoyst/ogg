@@ -75,7 +75,7 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 	s = e
 
 	last := (len(packet) / mps) * mps
-	h.HeaderType &= COP
+	h.HeaderType |= COP
 	for s < last {
 		h.Page++
 		e = s + mps
@@ -94,7 +94,10 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 }
 
 func (w *Encoder) writePage(page []byte, h *pageHeader) error {
-	h.Nsegs = byte(len(page)/255 + 1)
+	h.Nsegs = byte(len(page)/255)
+	if h.Nsegs == 0 {
+		h.Nsegs = 1
+	}
 	segtbl := make([]byte, h.Nsegs)
 	for i := 0; i < len(segtbl)-1; i++ {
 		segtbl[i] = 255

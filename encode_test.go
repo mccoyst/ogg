@@ -89,3 +89,49 @@ func TestBasicEncodeEOS(t *testing.T) {
 		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
 	}
 }
+
+func TestLongEncode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	var junk bytes.Buffer
+	for i := 0; i < maxPageSize * 2; i++ {
+		junk.WriteByte('x')
+	}
+
+	err := e.Encode(2, junk.Bytes())
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	bb := b.Bytes()
+	expect := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		0,
+		2, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		0, 0, 0, 0,
+		0x68, 0x7b, 0xce, 0xde, // crc
+		255,
+	}
+
+	if !bytes.Equal(bb[:headsz], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb[:headsz], expect)
+	}
+
+	expect2 := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		COP,
+		2, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		1, 0, 0, 0,
+		0x91, 0xc4, 0x23, 0xf2, // crc
+		255,
+	}
+
+	if !bytes.Equal(bb[maxPageSize:maxPageSize+headsz], expect2) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb[maxPageSize:maxPageSize+headsz], expect2)
+	}
+}
