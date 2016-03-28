@@ -94,7 +94,7 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 }
 
 func (w *Encoder) writePage(page []byte, h *pageHeader) error {
-	h.Nsegs = byte(len(page)/255)
+	h.Nsegs = byte(len(page) / 255)
 	if h.Nsegs == 0 {
 		h.Nsegs = 1
 	}

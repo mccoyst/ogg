@@ -96,7 +96,7 @@ func TestLongEncode(t *testing.T) {
 	e := NewEncoder(1, &b)
 
 	var junk bytes.Buffer
-	for i := 0; i < maxPageSize * 2; i++ {
+	for i := 0; i < maxPageSize*2; i++ {
 		junk.WriteByte('x')
 	}
 
@@ -137,7 +137,7 @@ func TestLongEncode(t *testing.T) {
 	}
 }
 
-type limitedWriter struct{
+type limitedWriter struct {
 	N int64
 }
 
@@ -153,15 +153,15 @@ func (w *limitedWriter) Write(p []byte) (int, error) {
 }
 
 func TestShortWrites(t *testing.T) {
-	e := NewEncoder(1, &limitedWriter{N:0})
+	e := NewEncoder(1, &limitedWriter{N: 0})
 	err := e.Encode(2, []byte("hello"))
 	if err != io.ErrClosedPipe {
 		t.Fatal("expected ErrClosedPipe, got:", err)
 	}
 
-	e = NewEncoder(1, &limitedWriter{N:maxPageSize+1})
+	e = NewEncoder(1, &limitedWriter{N: maxPageSize + 1})
 	var junk bytes.Buffer
-	for i := 0; i < maxPageSize * 2; i++ {
+	for i := 0; i < maxPageSize*2; i++ {
 		junk.WriteByte('x')
 	}
 	err = e.Encode(2, junk.Bytes())

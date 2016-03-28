@@ -95,7 +95,7 @@ func TestShortDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}
-	d = NewDecoder(&io.LimitedReader{R: &b, N: int64(b.Len())-1})
+	d = NewDecoder(&io.LimitedReader{R: &b, N: int64(b.Len()) - 1})
 	_, err = d.Decode()
 	if err != io.ErrUnexpectedEOF {
 		t.Fatal("expected ErrUnexpectedEOF, got:", err)
