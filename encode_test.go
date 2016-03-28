@@ -4,6 +4,7 @@ package ogg
 
 import (
 	"bytes"
+	"io"
 	"testing"
 )
 
@@ -133,5 +134,38 @@ func TestLongEncode(t *testing.T) {
 
 	if !bytes.Equal(bb[maxPageSize:maxPageSize+headsz], expect2) {
 		t.Fatalf("bytes != expected:\n%x\n%x", bb[maxPageSize:maxPageSize+headsz], expect2)
+	}
+}
+
+type limitedWriter struct{
+	N int64
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	if w.N <= int64(len(p)) {
+		n := w.N
+		w.N = 0
+		return int(n), io.ErrClosedPipe
+	}
+
+	w.N -= int64(len(p))
+	return len(p), nil
+}
+
+func TestShortWrites(t *testing.T) {
+	e := NewEncoder(1, &limitedWriter{N:0})
+	err := e.Encode(2, []byte("hello"))
+	if err != io.ErrClosedPipe {
+		t.Fatal("expected ErrClosedPipe, got:", err)
+	}
+
+	e = NewEncoder(1, &limitedWriter{N:maxPageSize+1})
+	var junk bytes.Buffer
+	for i := 0; i < maxPageSize * 2; i++ {
+		junk.WriteByte('x')
+	}
+	err = e.Encode(2, junk.Bytes())
+	if err != io.ErrClosedPipe {
+		t.Fatal("expected ErrClosedPipe, got:", err)
 	}
 }
