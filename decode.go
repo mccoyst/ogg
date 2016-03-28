@@ -89,10 +89,7 @@ func (d *Decoder) Decode() (Page, error) {
 	}
 
 	var h pageHeader
-	err := binary.Read(bytes.NewBuffer(hbuf), byteOrder, &h)
-	if err != nil {
-		return Page{}, err
-	}
+	_ = binary.Read(bytes.NewBuffer(hbuf), byteOrder, &h)
 
 	if h.Nsegs < 1 {
 		return Page{}, ErrBadSegs
@@ -100,7 +97,7 @@ func (d *Decoder) Decode() (Page, error) {
 
 	nsegs := int(h.Nsegs)
 	segtbl := d.buf[headsz : headsz+nsegs]
-	_, err = io.ReadFull(d.r, segtbl)
+	_, err := io.ReadFull(d.r, segtbl)
 	if err != nil {
 		return Page{}, err
 	}
