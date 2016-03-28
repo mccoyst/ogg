@@ -100,7 +100,24 @@ func TestShortDecode(t *testing.T) {
 	if err != io.ErrUnexpectedEOF {
 		t.Fatalf("expected ErrUnexpectedEOF, got: %v", err)
 	}
+}
 
+func TestBadSegs(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeBOS(2, []byte("hello"))
+	if err != nil {
+		t.Fatalf("unexpected EncodeBOS error:", err)
+	}
+
+	b.Bytes()[26] = 0
+
+	d := NewDecoder(&b)
+	_, err = d.Decode()
+	if err != ErrBadSegs {
+		t.Fatalf("expected ErrBadSegs, got: %v", err)
+	}
 }
 
 func TestSyncDecode(t *testing.T) {
