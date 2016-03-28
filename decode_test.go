@@ -122,7 +122,20 @@ func TestBadSegs(t *testing.T) {
 
 func TestSyncDecode(t *testing.T) {
 	var b bytes.Buffer
-	b.Write([]byte("junk, junk, and more junk"))
+	for i := 0; i < headsz-1; i++ {
+		b.Write([]byte("x"))
+	}
+	b.Write([]byte("O"))
+
+	for i := 0; i < headsz-3; i++ {
+		b.Write([]byte("x"))
+	}
+	b.Write([]byte("Og"))
+
+	for i := 0; i < headsz-5; i++ {
+		b.Write([]byte("x"))
+	}
+	b.Write([]byte("Ogg"))
 
 	e := NewEncoder(1, &b)
 
