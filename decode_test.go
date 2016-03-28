@@ -4,6 +4,7 @@ package ogg
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 )
@@ -45,7 +46,7 @@ func TestBasicDecode(t *testing.T) {
 	}
 }
 
-func TestBadDecode(t *testing.T) {
+func TestBadCrc(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
@@ -67,6 +68,39 @@ func TestBadDecode(t *testing.T) {
 	} else if !strings.HasPrefix(bs.Error(), "invalid crc in packet") {
 		t.Fatalf("the error message looks wrong: %q", err.Error())
 	}
+}
+
+func TestShortDecode(t *testing.T) {
+	var b bytes.Buffer
+	d := NewDecoder(&b)
+	_, err := d.Decode()
+	if err != io.EOF {
+		t.Fatalf("expected EOF, got: %v", err)
+	}
+
+	e := NewEncoder(1, &b)
+	err = e.Encode(2, []byte("hello"))
+	if err != nil {
+		t.Fatalf("unexpected Encode error:", err)
+	}
+	d = NewDecoder(&io.LimitedReader{R: &b, N: headsz})
+	_, err = d.Decode()
+	if err != io.EOF {
+		t.Fatalf("expected EOF, got: %v", err)
+	}
+
+	b.Reset()
+	e = NewEncoder(1, &b)
+	err = e.Encode(2, []byte("hello"))
+	if err != nil {
+		t.Fatalf("unexpected Encode error:", err)
+	}
+	d = NewDecoder(&io.LimitedReader{R: &b, N: int64(b.Len())-1})
+	_, err = d.Decode()
+	if err != io.ErrUnexpectedEOF {
+		t.Fatalf("expected ErrUnexpectedEOF, got: %v", err)
+	}
+
 }
 
 func TestSyncDecode(t *testing.T) {
