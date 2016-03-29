@@ -70,7 +70,7 @@ func TestBasicEncodeEOS(t *testing.T) {
 
 	err := e.EncodeEOS()
 	if err != nil {
-		t.Fatal("unexpected EncodeBOS error:", err)
+		t.Fatal("unexpected EncodeEOS error:", err)
 	}
 
 	bb := b.Bytes()
@@ -113,7 +113,7 @@ func TestLongEncode(t *testing.T) {
 		2, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		0, 0, 0, 0,
-		0x68, 0x7b, 0xce, 0xde, // crc
+		0xee, 0xb2, 0x0b, 0xca, // crc
 		255,
 	}
 
@@ -128,7 +128,7 @@ func TestLongEncode(t *testing.T) {
 		2, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		1, 0, 0, 0,
-		0x91, 0xc4, 0x23, 0xf2, // crc
+		0x17, 0x0d, 0xe6, 0xe6, // crc
 		255,
 	}
 

@@ -95,14 +95,17 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 
 func (w *Encoder) writePage(page []byte, h *pageHeader) error {
 	h.Nsegs = byte(len(page) / 255)
-	if h.Nsegs == 0 {
-		h.Nsegs = 1
+	rem := byte(len(page) % 255)
+	if rem > 0 || len(page) == 0 {
+		h.Nsegs++
 	}
 	segtbl := make([]byte, h.Nsegs)
-	for i := 0; i < len(segtbl)-1; i++ {
+	for i := 0; i < len(segtbl); i++ {
 		segtbl[i] = 255
 	}
-	segtbl[len(segtbl)-1] = byte(len(page) % 255)
+	if rem > 0 || len(page) == 0 {
+		segtbl[len(segtbl)-1] = rem
+	}
 
 	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
 	_ = binary.Write(hb, byteOrder, h)
