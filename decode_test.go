@@ -197,7 +197,7 @@ func TestLongDecode(t *testing.T) {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
 	if !bytes.Equal(p1.Packet, junk.Bytes()[:mps]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packet,  junk.Bytes()[:mps])
+		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packet, junk.Bytes()[:mps])
 	}
 
 	p2, err := d.Decode()
@@ -207,8 +207,8 @@ func TestLongDecode(t *testing.T) {
 	if p2.Type != COP {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
-	if !bytes.Equal(p2.Packet,  junk.Bytes()[mps:mps+mps]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packet,  junk.Bytes()[mps:mps+mps])
+	if !bytes.Equal(p2.Packet, junk.Bytes()[mps:mps+mps]) {
+		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packet, junk.Bytes()[mps:mps+mps])
 	}
 
 	p3, err := d.Decode()
@@ -218,8 +218,8 @@ func TestLongDecode(t *testing.T) {
 	if p3.Type != COP {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
-	rem := (maxPageSize*2) - mps*2
+	rem := (maxPageSize * 2) - mps*2
 	if !bytes.Equal(p3.Packet, junk.Bytes()[mps*2:mps*2+rem]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packet,  junk.Bytes()[mps*2:mps*2+rem])
+		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packet, junk.Bytes()[mps*2:mps*2+rem])
 	}
 }
