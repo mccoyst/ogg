@@ -42,8 +42,86 @@ func TestBasicDecode(t *testing.T) {
 		'h', 'e', 'l', 'l', 'o',
 	}
 
-	if !bytes.Equal(p.Packet, expect) {
-		t.Fatalf("bytes != expected:\n%x\n%x", p.Packet, expect)
+	if len(p.Packets) != 1 {
+		t.Fatalf("len(p.Packets) = %d", len(p.Packets))
+	}
+
+	if !bytes.Equal(p.Packets[0], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
+	}
+}
+
+func TestBasicMultiDecode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeBOS(2, []byte("hello"))
+	if err != nil {
+		t.Fatal("unexpected EncodeBOS error:", err)
+	}
+	err = e.Encode(7, []byte("there"))
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	d := NewDecoder(&b)
+
+	p, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+
+	if p.Type != BOS {
+		t.Fatal("expected BOS, got", p.Type)
+	}
+
+	if p.Serial != 1 {
+		t.Fatal("expected serial 1, got", p.Serial)
+	}
+
+	if p.Granule != 2 {
+		t.Fatal("expected granule 2, got", p.Granule)
+	}
+
+	expect := []byte{
+		'h', 'e', 'l', 'l', 'o',
+	}
+
+	if len(p.Packets) != 1 {
+		t.Fatalf("len(p.Packets) = %d", len(p.Packets))
+	}
+
+	if !bytes.Equal(p.Packets[0], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
+	}
+
+	p, err = d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+
+	if p.Type != 0 {
+		t.Fatal("expected normal type, got", p.Type)
+	}
+
+	if p.Serial != 1 {
+		t.Fatal("expected serial 1, got", p.Serial)
+	}
+
+	if p.Granule != 7 {
+		t.Fatal("expected granule 7, got", p.Granule)
+	}
+
+	expect = []byte{
+		't', 'h', 'e', 'r', 'e',
+	}
+
+	if len(p.Packets) != 1 {
+		t.Fatalf("len(p.Packets) = %d", len(p.Packets))
+	}
+
+	if !bytes.Equal(p.Packets[0], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
 	}
 }
 
@@ -168,8 +246,12 @@ func TestSyncDecode(t *testing.T) {
 		'h', 'e', 'l', 'l', 'o',
 	}
 
-	if !bytes.Equal(p.Packet, expect) {
-		t.Fatalf("bytes != expected:\n%x\n%x", p.Packet, expect)
+	if len(p.Packets) != 1 {
+		t.Fatalf("len(p.Packets) = %d", len(p.Packets))
+	}
+
+	if !bytes.Equal(p.Packets[0], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
 	}
 }
 
@@ -196,8 +278,11 @@ func TestLongDecode(t *testing.T) {
 	if p1.Type != 0 {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
-	if !bytes.Equal(p1.Packet, junk.Bytes()[:mps]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packet, junk.Bytes()[:mps])
+	if len(p1.Packets) != 1 {
+		t.Fatalf("len(p1.Packets) = %d", len(p1.Packets))
+	}
+	if !bytes.Equal(p1.Packets[0], junk.Bytes()[:mps]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packets[0], junk.Bytes()[:mps])
 	}
 
 	p2, err := d.Decode()
@@ -207,8 +292,11 @@ func TestLongDecode(t *testing.T) {
 	if p2.Type != COP {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
-	if !bytes.Equal(p2.Packet, junk.Bytes()[mps:mps+mps]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packet, junk.Bytes()[mps:mps+mps])
+	if len(p2.Packets) != 1 {
+		t.Fatalf("len(p2.Packets) = %d", len(p2.Packets))
+	}
+	if !bytes.Equal(p2.Packets[0], junk.Bytes()[mps:mps+mps]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packets[0], junk.Bytes()[mps:mps+mps])
 	}
 
 	p3, err := d.Decode()
@@ -218,8 +306,11 @@ func TestLongDecode(t *testing.T) {
 	if p3.Type != COP {
 		t.Fatal("unexpected page type:", p1.Type)
 	}
+	if len(p3.Packets) != 1 {
+		t.Fatalf("len(p3.Packets) = %d", len(p3.Packets))
+	}
 	rem := (maxPageSize * 2) - mps*2
-	if !bytes.Equal(p3.Packet, junk.Bytes()[mps*2:mps*2+rem]) {
-		t.Fatal("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packet, junk.Bytes()[mps*2:mps*2+rem])
+	if !bytes.Equal(p3.Packets[0], junk.Bytes()[mps*2:mps*2+rem]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packets[0], junk.Bytes()[mps*2:mps*2+rem])
 	}
 }

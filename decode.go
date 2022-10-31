@@ -29,9 +29,10 @@ type Page struct {
 	Serial uint32
 	// Granule is the granule position, whose meaning is dependent on the encapsulated codec.
 	Granule int64
-	// Packet is the raw packet data.
-	// If Type & COP != 0, this is a continuation of the previous page's packet.
-	Packet []byte
+	// Packets are the raw packet data.
+	// If Type & COP != 0, the first element is
+	// a continuation of the previous page's last packet.
+	Packets [][]byte
 }
 
 // ErrBadSegs is the error used when trying to decode a page with a segment table size less than 1.
@@ -53,7 +54,7 @@ var oggs = []byte{'O', 'g', 'g', 'S'}
 // Decode reads from d's Reader to the next ogg page, then returns the decoded Page or an error.
 // The error may be io.EOF if that's what the Reader returned.
 //
-// The buffer underlying the returned Page's Packet is owned by the Decoder.
+// The buffer underlying the returned Page's Packets' bytes is owned by the Decoder.
 // It may be overwritten by subsequent calls to Decode.
 //
 // It is safe to call Decode concurrently on distinct Decoders if their Readers are distinct.
@@ -102,21 +103,31 @@ func (d *Decoder) Decode() (Page, error) {
 		return Page{}, err
 	}
 
-	packetlen := 0
-	// This seems to contradict the spec, which says a segment with length < 255
-	// indicates the end of a packet. But hey, libogg puts out short non-final segments,
-	// so what can I do.
+	// A page can contain multiple packets; record their lengths from the table
+	// now and slice up the payload after reading it.
+	// I'm inclined to limit the Read calls this way,
+	// but it's possible it isn't worth the annoyance of iterating twice
+	var packetlens []int
+	payloadlen := 0
+	more := false
 	for _, l := range segtbl {
-		packetlen += int(l)
+		if more {
+			packetlens[len(packetlens)-1] += int(l)
+		} else {
+			packetlens = append(packetlens, int(l))
+		}
+
+		more = l == mss
+		payloadlen += int(l)
 	}
 
-	packet := d.buf[headsz+nsegs : headsz+nsegs+packetlen]
-	_, err = io.ReadFull(d.r, packet)
+	payload := d.buf[headsz+nsegs : headsz+nsegs+payloadlen]
+	_, err = io.ReadFull(d.r, payload)
 	if err != nil {
 		return Page{}, err
 	}
 
-	page := d.buf[0 : headsz+nsegs+packetlen]
+	page := d.buf[0 : headsz+nsegs+payloadlen]
 	// Clear out existing crc before calculating it
 	page[22] = 0
 	page[23] = 0
@@ -127,5 +138,12 @@ func (d *Decoder) Decode() (Page, error) {
 		return Page{}, ErrBadCrc{h.Crc, crc}
 	}
 
-	return Page{h.HeaderType, h.Serial, h.Granule, packet}, nil
+	packets := make([][]byte, len(packetlens))
+	s := 0
+	for i, l := range packetlens {
+		packets[i] = payload[s : s+l ]
+		s += l
+	}
+
+	return Page{h.HeaderType, h.Serial, h.Granule, packets}, nil
 }

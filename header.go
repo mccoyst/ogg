@@ -20,7 +20,7 @@ const headsz = 27
 // max segment size
 const mss = 255
 
-// max packet size
+// max sequence-of-segments size in a page
 const mps = mss * 255
 
 // == 65307, per the RFC
@@ -42,7 +42,7 @@ type pageHeader struct {
 
 const (
 	// Continuation of packet
-	COP byte = 1 + iota
+	COP byte = 1 << iota
 	// Beginning of stream
 	BOS = 1 << iota
 	// End of stream
