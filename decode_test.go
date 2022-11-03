@@ -363,3 +363,153 @@ func TestLongDecode(t *testing.T) {
 		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packets[0], junk.Bytes()[mps*2:mps*2+rem])
 	}
 }
+
+func TestLongMultipacketDecode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	var junk bytes.Buffer
+	for i := 0; i < maxPageSize*2; i++ {
+		c := byte(rand.Intn(26)) + 'a'
+		junk.WriteByte(c)
+	}
+
+	err := e.Encode(2, [][]byte{junk.Bytes()[:50], junk.Bytes()[50:]})
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	d := NewDecoder(&b)
+	p1, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p1.Type != 0 {
+		t.Fatal("unexpected page type:", p1.Type)
+	}
+	if len(p1.Packets) != 2 {
+		t.Fatalf("len(p1.Packets) = %d", len(p1.Packets))
+	}
+	if !bytes.Equal(p1.Packets[0], junk.Bytes()[:50]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packets[0], junk.Bytes()[:50])
+	}
+	if len(p1.Packets[1]) != mps-mss {
+		t.Fatalf("packet is wrong size: %d vs. %d", len(p1.Packets[1]), mps-mss)
+	}
+	if !bytes.Equal(p1.Packets[1], junk.Bytes()[50:50+mps-mss]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packets[1], junk.Bytes()[50:50+mps-mss])
+	}
+
+	p2, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p2.Type != COP {
+		t.Fatal("unexpected page type:", p1.Type)
+	}
+	if len(p2.Packets) != 1 {
+		t.Fatalf("len(p2.Packets) = %d", len(p2.Packets))
+	}
+	if len(p2.Packets[0]) != mps {
+		t.Fatalf("packet is wrong size: %d vs. %d", len(p2.Packets[0]), mps)
+	}
+
+	start := 50 + mps - mss
+	if !bytes.Equal(p2.Packets[0], junk.Bytes()[start:start+mps]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packets[0], junk.Bytes()[start:start+mps])
+	}
+
+	p3, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p3.Type != COP {
+		t.Fatal("unexpected page type:", p1.Type)
+	}
+	if len(p3.Packets) != 1 {
+		t.Fatalf("len(p3.Packets) = %d", len(p3.Packets))
+	}
+	start += mps
+	if !bytes.Equal(p3.Packets[0], junk.Bytes()[start:]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packets[0], junk.Bytes()[start:])
+	}
+}
+
+func TestEvenLongerMultipacketDecode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	var junk bytes.Buffer
+	for i := 0; i < maxPageSize*2; i++ {
+		c := byte(rand.Intn(26)) + 'a'
+		junk.WriteByte(c)
+	}
+
+	err := e.Encode(2, [][]byte{
+		junk.Bytes()[:50],
+		junk.Bytes()[50 : junk.Len()-13],
+		junk.Bytes()[junk.Len()-13:],
+	})
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	d := NewDecoder(&b)
+	p1, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p1.Type != 0 {
+		t.Fatal("unexpected page type:", p1.Type)
+	}
+	if len(p1.Packets) != 2 {
+		t.Fatalf("len(p1.Packets) = %d", len(p1.Packets))
+	}
+	if !bytes.Equal(p1.Packets[0], junk.Bytes()[:50]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packets[0], junk.Bytes()[:50])
+	}
+	if len(p1.Packets[1]) != mps-mss {
+		t.Fatalf("packet is wrong size: %d vs. %d", len(p1.Packets[1]), mps-mss)
+	}
+	if !bytes.Equal(p1.Packets[1], junk.Bytes()[50:50+mps-mss]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p1.Packets[1], junk.Bytes()[50:50+mps-mss])
+	}
+
+	p2, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p2.Type != COP {
+		t.Fatal("unexpected page type:", p1.Type)
+	}
+	if len(p2.Packets) != 1 {
+		t.Fatalf("len(p2.Packets) = %d", len(p2.Packets))
+	}
+	if len(p2.Packets[0]) != mps {
+		t.Fatalf("packet is wrong size: %d vs. %d", len(p2.Packets[0]), mps)
+	}
+
+	start := 50 + mps - mss
+	if !bytes.Equal(p2.Packets[0], junk.Bytes()[start:start+mps]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p2.Packets[0], junk.Bytes()[start:start+mps])
+	}
+
+	p3, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+	if p3.Type != COP {
+		t.Fatal("unexpected page type:", p3.Type)
+	}
+	if len(p3.Packets) != 2 {
+		t.Fatalf("len(p3.Packets) = %d", len(p3.Packets))
+	}
+	start += mps
+	if !bytes.Equal(p3.Packets[0], junk.Bytes()[start:junk.Len()-13]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packets[0], junk.Bytes()[start:start+mps-13])
+	}
+	start = junk.Len() - 13
+	if !bytes.Equal(p3.Packets[1], junk.Bytes()[start:]) {
+		t.Fatalf("packet is wrong:\n\t%x\nvs\n\t%x\n", p3.Packets[0], junk.Bytes()[start:])
+	}
+}

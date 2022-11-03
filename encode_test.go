@@ -36,6 +36,33 @@ func TestBasicEncodeBOS(t *testing.T) {
 	}
 }
 
+func TestEmptyEncodeBOS(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeBOS(2, nil)
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	bb := b.Bytes()
+	expect := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		BOS,
+		2, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		0, 0, 0, 0,
+		0x7a, 0xa4, 0x84, 0xc2, // crc
+		1,
+		0, // segment table
+	}
+
+	if !bytes.Equal(bb, expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
+	}
+}
+
 func TestEmptyEncode(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
@@ -54,6 +81,33 @@ func TestEmptyEncode(t *testing.T) {
 		1, 0, 0, 0,
 		0, 0, 0, 0,
 		0xda, 0xf7, 0x1c, 0xce, // crc
+		1,
+		0, // segment table
+	}
+
+	if !bytes.Equal(bb, expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
+	}
+}
+
+func TestEmptyEncodeEOS(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeEOS(2, nil)
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	bb := b.Bytes()
+	expect := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		EOS,
+		2, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		0, 0, 0, 0,
+		0x9a, 0x50, 0x2c, 0xd7, // crc
 		1,
 		0, // segment table
 	}

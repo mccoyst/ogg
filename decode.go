@@ -14,8 +14,8 @@ import (
 type Decoder struct {
 	// buffer for packet lengths, to avoid allocating (mss is also the max per page)
 	lenbuf [mss]int
-	r   io.Reader
-	buf [maxPageSize]byte
+	r      io.Reader
+	buf    [maxPageSize]byte
 }
 
 // NewDecoder creates an ogg Decoder.

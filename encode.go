@@ -12,7 +12,7 @@ import (
 type Encoder struct {
 	serial uint32
 	page   uint32
-	dummy [1][]byte // convenience field to handle nil packets args without allocating
+	dummy  [1][]byte // convenience field to handle nil packets args without allocating
 	w      io.Writer
 	buf    [maxPageSize]byte
 }
@@ -75,7 +75,7 @@ func (w *Encoder) writePackets(kind byte, granule int64, packets [][]byte) error
 	}
 
 	// Write the lacing values before filling in their quantity
-	segtbl, car, cdr := w.segmentize(payload{packets[0], packets[1:]})
+	segtbl, car, cdr := w.segmentize(payload{packets[0], packets[1:], nil})
 	err := w.writePage(&h, segtbl, car)
 	if err != nil {
 		return err
@@ -108,6 +108,7 @@ func (w *Encoder) writePage(h *pageHeader, segtbl []byte, pay payload) error {
 	for _, p := range pay.packets {
 		hb.Write(p)
 	}
+	hb.Write(pay.rightover)
 
 	bb := hb.Bytes()
 	crc := crc32(bb)
@@ -119,23 +120,24 @@ func (w *Encoder) writePage(h *pageHeader, segtbl []byte, pay payload) error {
 
 // payload represents a potentially-split group of packets.
 // For the "left" portion of a split,
-// leftover is the beginning portion of the *last* packet,
+// rightover is the beginning portion of the *last* packet,
 // and packets contains the preceding packets.
 // For the "right" portion of a split,
 // leftover is the *first* packet and the other packets follow.
 //
 // ASCII example (each run of letters represents one packet):
 //
-// Page 1         Page 2
+// Page 1 (left)  Page 2 (right)
 // [aaaabbbbccccd][dddeeeffff]
 //
 // For Page 1, packets would be a slice holding the a's, b's, and c's.
-// leftover would contain the first d.
+// and rightover would contain the first d.
 // For Page 2, leftover would contain the d's,
 // and packets would contain the e's and f's
 type payload struct {
-	leftover []byte
-	packets  [][]byte
+	leftover  []byte
+	packets   [][]byte
+	rightover []byte
 }
 
 // segmentize fills the segment table with lacing values based on the packets
@@ -159,14 +161,13 @@ func (w *Encoder) segmentize(pay payload) ([]byte, payload, payload) {
 		i++
 	} else {
 		leftStart := len(pay.leftover) - (s255s * mss) - rem
-		good := payload{pay.leftover[0:leftStart], nil}
-		bad := payload{pay.leftover[leftStart:], pay.packets}
+		good := payload{pay.leftover[0:leftStart], nil, nil}
+		bad := payload{pay.leftover[leftStart:], pay.packets, nil}
 		return segtbl, good, bad
 	}
 
 	// Now loop through the rest and track if we need to split
-	p := 0
-	for ; p < len(pay.packets); p++ {
+	for p := 0; p < len(pay.packets); p++ {
 		s255s := len(pay.packets[p]) / mss
 		rem := len(pay.packets[p]) % mss
 		for i < len(segtbl) && s255s > 0 {
@@ -178,19 +179,14 @@ func (w *Encoder) segmentize(pay payload) ([]byte, payload, payload) {
 			segtbl[i] = byte(rem)
 			i++
 		} else {
-			leftStart := len(pay.packets[p]) - (s255s * mss) - rem
-			good := payload{pay.leftover, pay.packets[0:p]}
-			bad := payload{pay.packets[p][leftStart:], pay.packets[p:]}
+			right := len(pay.packets[p]) - (s255s * mss) - rem
+			good := payload{pay.leftover, pay.packets[0:p], pay.packets[p][0:right]}
+			bad := payload{pay.packets[p][right:], pay.packets[p+1:], nil}
 			return segtbl, good, bad
 		}
 	}
-	if p < len(pay.packets) {
-		good := payload{pay.leftover, pay.packets[0:p]}
-		bad := payload{pay.packets[p], pay.packets[p+1:]}
-		return segtbl, good, bad
-	}
 
 	good := pay
-	bad := payload{nil, nil}
+	bad := payload{}
 	return segtbl[0:i], good, bad
 }
