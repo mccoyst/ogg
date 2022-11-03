@@ -12,7 +12,7 @@ func TestBasicEncodeBOS(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
@@ -36,13 +36,40 @@ func TestBasicEncodeBOS(t *testing.T) {
 	}
 }
 
+func TestEmptyEncode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.Encode(2, nil)
+	if err != nil {
+		t.Fatal("unexpected Encode error:", err)
+	}
+
+	bb := b.Bytes()
+	expect := []byte{
+		'O', 'g', 'g', 'S',
+		0,
+		0,
+		2, 0, 0, 0, 0, 0, 0, 0,
+		1, 0, 0, 0,
+		0, 0, 0, 0,
+		0xda, 0xf7, 0x1c, 0xce, // crc
+		1,
+		0, // segment table
+	}
+
+	if !bytes.Equal(bb, expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", bb, expect)
+	}
+}
+
 func TestBasicEncode(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.Encode(2, []byte("hello"))
+	err := e.Encode(2, [][]byte{[]byte("hello")})
 	if err != nil {
-		t.Fatal("unexpected EncodeBOS error:", err)
+		t.Fatal("unexpected Encode error:", err)
 	}
 
 	bb := b.Bytes()
@@ -68,7 +95,7 @@ func TestBasicEncodeEOS(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeEOS()
+	err := e.EncodeEOS(7, [][]byte{nil})
 	if err != nil {
 		t.Fatal("unexpected EncodeEOS error:", err)
 	}
@@ -78,10 +105,10 @@ func TestBasicEncodeEOS(t *testing.T) {
 		'O', 'g', 'g', 'S',
 		0,
 		EOS,
-		0, 0, 0, 0, 0, 0, 0, 0,
+		7, 0, 0, 0, 0, 0, 0, 0,
 		1, 0, 0, 0,
 		0, 0, 0, 0,
-		0xc9, 0x22, 0xe8, 0x34, // crc
+		0x79, 0x1e, 0xe7, 0xe7, // crc
 		1,
 		0, // segment table
 	}
@@ -100,7 +127,7 @@ func TestLongEncode(t *testing.T) {
 		junk.WriteByte('x')
 	}
 
-	err := e.Encode(2, junk.Bytes())
+	err := e.Encode(2, [][]byte{junk.Bytes()})
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}
@@ -154,7 +181,7 @@ func (w *limitedWriter) Write(p []byte) (int, error) {
 
 func TestShortWrites(t *testing.T) {
 	e := NewEncoder(1, &limitedWriter{N: 0})
-	err := e.Encode(2, []byte("hello"))
+	err := e.Encode(2, [][]byte{[]byte("hello")})
 	if err != io.ErrClosedPipe {
 		t.Fatal("expected ErrClosedPipe, got:", err)
 	}
@@ -164,7 +191,7 @@ func TestShortWrites(t *testing.T) {
 	for i := 0; i < maxPageSize*2; i++ {
 		junk.WriteByte('x')
 	}
-	err = e.Encode(2, junk.Bytes())
+	err = e.Encode(2, [][]byte{junk.Bytes()})
 	if err != io.ErrClosedPipe {
 		t.Fatal("expected ErrClosedPipe, got:", err)
 	}

@@ -14,7 +14,7 @@ func TestBasicDecode(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
@@ -55,11 +55,11 @@ func TestBasicMultiDecode(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
-	err = e.Encode(7, []byte("there"))
+	err = e.Encode(7, [][]byte{[]byte("there")})
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}
@@ -125,11 +125,60 @@ func TestBasicMultiDecode(t *testing.T) {
 	}
 }
 
+func TestMultipacketDecode(t *testing.T) {
+	var b bytes.Buffer
+	e := NewEncoder(1, &b)
+
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello"), []byte("there")})
+	if err != nil {
+		t.Fatal("unexpected EncodeBOS error:", err)
+	}
+
+	d := NewDecoder(&b)
+
+	p, err := d.Decode()
+	if err != nil {
+		t.Fatal("unexpected Decode error:", err)
+	}
+
+	if p.Type != BOS {
+		t.Fatal("expected BOS, got", p.Type)
+	}
+
+	if p.Serial != 1 {
+		t.Fatal("expected serial 1, got", p.Serial)
+	}
+
+	if p.Granule != 2 {
+		t.Fatal("expected granule 2, got", p.Granule)
+	}
+
+	expect := []byte{
+		'h', 'e', 'l', 'l', 'o',
+	}
+
+	if len(p.Packets) != 2 {
+		t.Fatalf("len(p.Packets) = %d", len(p.Packets))
+	}
+
+	if !bytes.Equal(p.Packets[0], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
+	}
+
+	expect = []byte{
+		't', 'h', 'e', 'r', 'e',
+	}
+
+	if !bytes.Equal(p.Packets[1], expect) {
+		t.Fatalf("bytes != expected:\n%x\n%x", p.Packets[0], expect)
+	}
+}
+
 func TestBadCrc(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
@@ -158,7 +207,7 @@ func TestShortDecode(t *testing.T) {
 	}
 
 	e := NewEncoder(1, &b)
-	err = e.Encode(2, []byte("hello"))
+	err = e.Encode(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}
@@ -170,7 +219,7 @@ func TestShortDecode(t *testing.T) {
 
 	b.Reset()
 	e = NewEncoder(1, &b)
-	err = e.Encode(2, []byte("hello"))
+	err = e.Encode(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}
@@ -185,7 +234,7 @@ func TestBadSegs(t *testing.T) {
 	var b bytes.Buffer
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
@@ -218,7 +267,7 @@ func TestSyncDecode(t *testing.T) {
 
 	e := NewEncoder(1, &b)
 
-	err := e.EncodeBOS(2, []byte("hello"))
+	err := e.EncodeBOS(2, [][]byte{[]byte("hello")})
 	if err != nil {
 		t.Fatal("unexpected EncodeBOS error:", err)
 	}
@@ -265,7 +314,7 @@ func TestLongDecode(t *testing.T) {
 		junk.WriteByte(c)
 	}
 
-	err := e.Encode(2, junk.Bytes())
+	err := e.Encode(2, [][]byte{junk.Bytes()})
 	if err != nil {
 		t.Fatal("unexpected Encode error:", err)
 	}

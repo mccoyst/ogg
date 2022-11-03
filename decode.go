@@ -141,7 +141,7 @@ func (d *Decoder) Decode() (Page, error) {
 	packets := make([][]byte, len(packetlens))
 	s := 0
 	for i, l := range packetlens {
-		packets[i] = payload[s : s+l ]
+		packets[i] = payload[s : s+l]
 		s += l
 	}
 

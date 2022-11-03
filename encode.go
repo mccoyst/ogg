@@ -11,6 +11,8 @@ import (
 // An Encoder encodes raw bytes into an ogg stream.
 type Encoder struct {
 	serial uint32
+	page   uint32
+	dummy [1][]byte // convenience field to handle nil packets args without allocating
 	w      io.Writer
 	buf    [maxPageSize]byte
 }
@@ -33,26 +35,38 @@ func NewEncoder(id uint32, w io.Writer) *Encoder {
 
 // EncodeBOS writes a beginning-of-stream packet to the ogg stream,
 // using the provided granule position.
-// If the packet is larger than can fit in a page, it is split into multiple
+// If the packets are larger than can fit in a page, the payload is split into multiple
 // pages with the continuation-of-packet flag set.
-func (w *Encoder) EncodeBOS(granule int64, packet []byte) error {
-	return w.writePacket(BOS, granule, packet)
+// Packets can be empty or nil, in which one segment of size 0 is encoded.
+func (w *Encoder) EncodeBOS(granule int64, packets [][]byte) error {
+	if len(packets) == 0 {
+		packets = w.dummy[:]
+	}
+	return w.writePackets(BOS, granule, packets)
 }
 
 // Encode writes a data packet to the ogg stream,
 // using the provided granule position.
 // If the packet is larger than can fit in a page, it is split into multiple
 // pages with the continuation-of-packet flag set.
-func (w *Encoder) Encode(granule int64, packet []byte) error {
-	return w.writePacket(0, granule, packet)
+// Packets can be empty or nil, in which one segment of size 0 is encoded.
+func (w *Encoder) Encode(granule int64, packets [][]byte) error {
+	if len(packets) == 0 {
+		packets = w.dummy[:]
+	}
+	return w.writePackets(0, granule, packets)
 }
 
 // EncodeEOS writes an end-of-stream packet to the ogg stream.
-func (w *Encoder) EncodeEOS() error {
-	return w.writePacket(EOS, 0, nil)
+// Packets can be empty or nil, in which one segment of size 0 is encoded.
+func (w *Encoder) EncodeEOS(granule int64, packets [][]byte) error {
+	if len(packets) == 0 {
+		packets = w.dummy[:]
+	}
+	return w.writePackets(EOS, granule, packets)
 }
 
-func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
+func (w *Encoder) writePackets(kind byte, granule int64, packets [][]byte) error {
 	h := pageHeader{
 		OggS:       [4]byte{'O', 'g', 'g', 'S'},
 		HeaderType: kind,
@@ -60,58 +74,40 @@ func (w *Encoder) writePacket(kind byte, granule int64, packet []byte) error {
 		Granule:    granule,
 	}
 
-	var err error
-
-	s := 0
-	e := s + mps
-	if e > len(packet) {
-		e = len(packet)
-	}
-	page := packet[s:e]
-	err = w.writePage(page, &h)
+	// Write the lacing values before filling in their quantity
+	segtbl, car, cdr := w.segmentize(payload{packets[0], packets[1:]})
+	err := w.writePage(&h, segtbl, car)
 	if err != nil {
 		return err
 	}
-	s = e
 
-	last := (len(packet) / mps) * mps
 	h.HeaderType |= COP
-	for s < last {
-		h.Page++
-		e = s + mps
-		page = packet[s:e]
-		err = w.writePage(page, &h)
+	for len(cdr.leftover) > 0 {
+		segtbl, car, cdr = w.segmentize(cdr)
+		err = w.writePage(&h, segtbl, car)
 		if err != nil {
 			return err
 		}
-		s = e
 	}
 
-	if s != len(packet) {
-		err = w.writePage(packet[s:], &h)
-	}
-	return err
+	return nil
 }
 
-func (w *Encoder) writePage(page []byte, h *pageHeader) error {
-	h.Nsegs = byte(len(page) / 255)
-	rem := byte(len(page) % 255)
-	if rem > 0 || len(page) == 0 {
-		h.Nsegs++
-	}
-	segtbl := make([]byte, h.Nsegs)
-	for i := 0; i < len(segtbl); i++ {
-		segtbl[i] = 255
-	}
-	if rem > 0 || len(page) == 0 {
-		segtbl[len(segtbl)-1] = rem
-	}
-
+func (w *Encoder) writePage(h *pageHeader, segtbl []byte, pay payload) error {
+	h.Page = w.page
+	w.page++
+	h.Nsegs = byte(len(segtbl))
 	hb := bytes.NewBuffer(w.buf[0:0:cap(w.buf)])
 	_ = binary.Write(hb, byteOrder, h)
 
+	// segtbl is already written in the buffer,
+	// but the writer needs to move along anyhow
 	hb.Write(segtbl)
-	hb.Write(page)
+
+	hb.Write(pay.leftover)
+	for _, p := range pay.packets {
+		hb.Write(p)
+	}
 
 	bb := hb.Bytes()
 	crc := crc32(bb)
@@ -119,4 +115,82 @@ func (w *Encoder) writePage(page []byte, h *pageHeader) error {
 
 	_, err := hb.WriteTo(w.w)
 	return err
+}
+
+// payload represents a potentially-split group of packets.
+// For the "left" portion of a split,
+// leftover is the beginning portion of the *last* packet,
+// and packets contains the preceding packets.
+// For the "right" portion of a split,
+// leftover is the *first* packet and the other packets follow.
+//
+// ASCII example (each run of letters represents one packet):
+//
+// Page 1         Page 2
+// [aaaabbbbccccd][dddeeeffff]
+//
+// For Page 1, packets would be a slice holding the a's, b's, and c's.
+// leftover would contain the first d.
+// For Page 2, leftover would contain the d's,
+// and packets would contain the e's and f's
+type payload struct {
+	leftover []byte
+	packets  [][]byte
+}
+
+// segmentize fills the segment table with lacing values based on the packets
+// provided in payload, starting with leftover (if any).
+// It returns the segment table (sized appropriately),
+// the payload to write with the segment table in the current page,
+// and any leftover payload that remains due to not fitting in a page.
+func (w *Encoder) segmentize(pay payload) ([]byte, payload, payload) {
+	segtbl := w.buf[headsz : headsz+mss]
+	i := 0
+
+	s255s := len(pay.leftover) / mss
+	rem := len(pay.leftover) % mss
+	for i < len(segtbl) && s255s > 0 {
+		segtbl[i] = mss
+		i++
+		s255s--
+	}
+	if i < mss {
+		segtbl[i] = byte(rem)
+		i++
+	} else {
+		leftStart := len(pay.leftover) - (s255s * mss) - rem
+		good := payload{pay.leftover[0:leftStart], nil}
+		bad := payload{pay.leftover[leftStart:], pay.packets}
+		return segtbl, good, bad
+	}
+
+	// Now loop through the rest and track if we need to split
+	p := 0
+	for ; p < len(pay.packets); p++ {
+		s255s := len(pay.packets[p]) / mss
+		rem := len(pay.packets[p]) % mss
+		for i < len(segtbl) && s255s > 0 {
+			segtbl[i] = mss
+			i++
+			s255s--
+		}
+		if i < mss {
+			segtbl[i] = byte(rem)
+			i++
+		} else {
+			leftStart := len(pay.packets[p]) - (s255s * mss) - rem
+			good := payload{pay.leftover, pay.packets[0:p]}
+			bad := payload{pay.packets[p][leftStart:], pay.packets[p:]}
+			return segtbl, good, bad
+		}
+	}
+	if p < len(pay.packets) {
+		good := payload{pay.leftover, pay.packets[0:p]}
+		bad := payload{pay.packets[p], pay.packets[p+1:]}
+		return segtbl, good, bad
+	}
+
+	good := pay
+	bad := payload{nil, nil}
+	return segtbl[0:i], good, bad
 }
