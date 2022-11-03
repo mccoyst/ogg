@@ -12,6 +12,8 @@ import (
 
 // A Decoder decodes an ogg stream page-by-page with its Decode method.
 type Decoder struct {
+	// buffer for packet lengths, to avoid allocating (mss is also the max per page)
+	lenbuf [mss]int
 	r   io.Reader
 	buf [maxPageSize]byte
 }
@@ -107,7 +109,7 @@ func (d *Decoder) Decode() (Page, error) {
 	// now and slice up the payload after reading it.
 	// I'm inclined to limit the Read calls this way,
 	// but it's possible it isn't worth the annoyance of iterating twice
-	var packetlens []int
+	packetlens := d.lenbuf[0:0]
 	payloadlen := 0
 	more := false
 	for _, l := range segtbl {
